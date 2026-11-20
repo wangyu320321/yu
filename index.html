@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>春节倒计时 · 2027</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 50% 30%, #c0392b 0%, #8B0000 45%, #4a0000 100%);
+    background-attachment: fixed;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ===== 特效画布：铺在最上层，不拦截点击 ===== */
+  #fx {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* ===== 摇摆灯笼 ===== */
+  .lantern {
+    position: absolute;
+    top: -10px;
+    width: 58px;
+    height: 46px;
+    background: linear-gradient(180deg, #e63946, #b71c1c);
+    border-radius: 50% 50% 45% 45%;
+    box-shadow: 0 8px 20px rgba(0,0,0,.35), inset 0 -6px 12px rgba(0,0,0,.25);
+    opacity: .9;
+    z-index: 2;
+    transform-origin: 50% -18px;
+    animation: sway 3.4s ease-in-out infinite alternate;
+  }
+  .lantern::before {
+    content: "";
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 18px;
+    background: #f5c542;
+  }
+  .lantern::after {
+    content: "";
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 22px;
+    background: #f5c542;
+    border-radius: 0 0 3px 3px;
+  }
+  .lantern.l1 { left: 11%; }
+  .lantern.l2 { right: 11%; animation-delay: -1.7s; }
+
+  @keyframes sway {
+    from { transform: rotate(-7deg); }
+    to   { transform: rotate(7deg); }
+  }
+
+  /* ===== 主卡片 ===== */
+  .card {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    padding: 52px 48px 44px;
+    border-radius: 32px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(245, 197, 66, 0.18);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    max-width: 920px;
+    width: calc(100% - 48px);
+    margin: 40px 0;
+  }
+
+  .subtitle {
+    font-size: 15px;
+    letter-spacing: 6px;
+    color: rgba(245, 197, 66, 0.7);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 800;
+    letter-spacing: 10px;
+    margin-bottom: 18px;
+    background: linear-gradient(100deg, #d9a520 0%, #f5c542 25%, #fff6d5 50%, #f5c542 75%, #d9a520 100%);
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shine 5s linear infinite;
+    filter: drop-shadow(0 4px 18px rgba(245, 197, 66, 0.3));
+  }
+
+  @keyframes shine {
+    to { background-position: 220% center; }
+  }
+
+  .year-tag {
+    display: inline-block;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #f5c542;
+    background: rgba(245, 197, 66, 0.1);
+    border: 1px solid rgba(245, 197, 66, 0.28);
+    border-radius: 999px;
+    padding: 6px 16px;
+    margin-bottom: 36px;
+  }
+
+  /* ===== 倒计时 ===== */
+  .countdown {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 88px;
+  }
+
+  .num {
+    display: inline-block;
+    font-size: clamp(48px, 8vw, 86px);
+    font-weight: 800;
+    line-height: 1;
+    color: #fff8e7;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+    text-shadow:
+      0 0 18px rgba(255, 215, 0, 0.35),
+      0 6px 30px rgba(0, 0, 0, 0.35);
+    will-change: transform;
+  }
+
+  /* 数字跳变时的弹跳 */
+  .num.bump {
+    animation: bump 0.38s cubic-bezier(.34, 1.56, .64, 1);
+  }
+
+  @keyframes bump {
+    0%   { transform: scale(1); color: #fff8e7; }
+    45%  { transform: scale(1.14); color: #ffe9a8; }
+    100% { transform: scale(1); color: #fff8e7; }
+  }
+
+  .label {
+    margin-top: 12px;
+    font-size: 13px;
+    letter-spacing: 4px;
+    color: rgba(255, 248, 231, 0.55);
+  }
+
+  .sep {
+    font-size: clamp(40px, 6vw, 68px);
+    font-weight: 300;
+    color: rgba(245, 197, 66, 0.35);
+    line-height: 1;
+    margin-top: 4px;
+    user-select: none;
+  }
+
+  /* ===== 俏皮小贴士 ===== */
+  .tip {
+    margin-top: 34px;
+    font-size: 15px;
+    letter-spacing: 2px;
+    color: rgba(255, 240, 200, 0.72);
+    min-height: 22px;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+  .tip.fade {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  .target-date {
+    margin-top: 18px;
+    font-size: 14px;
+    color: rgba(255, 248, 231, 0.4);
+    letter-spacing: 3px;
+  }
+
+  .target-date strong {
+    color: rgba(245, 197, 66, 0.75);
+    font-weight: 600;
+  }
+
+  /* ===== 春节已到 ===== */
+  .celebrate {
+    font-size: clamp(28px, 4vw, 40px);
+    color: #f5c542;
+    font-weight: 700;
+    letter-spacing: 6px;
+    padding: 40px 0;
+  }
+
+  @media (max-width: 640px) {
+    .card { padding: 36px 16px 32px; }
+    h1 { letter-spacing: 6px; }
+    .unit { min-width: 62px; }
+    .countdown { gap: 4px; }
+    .lantern { width: 42px; height: 34px; }
+    .lantern.l1 { left: 4%; }
+    .lantern.l2 { right: 4%; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="fx"></canvas>
+
+<div class="lantern l1"></div>
+<div class="lantern l2"></div>
+
+<div class="card">
+  <div class="subtitle">Spring Festival Countdown</div>
+  <h1>春节倒计时</h1>
+  <div class="year-tag">🏮 2027 · 丁未羊年 🐑</div>
+
+  <div id="countdown" class="countdown">
+    <div class="unit"><span class="num" id="d">00</span><span class="label">天</span></div>
+    <span class="sep">:</span>
+    <div class="unit"><span class="num" id="h">00</span><span class="label">时</span></div>
+    <span class="sep">:</span>
+    <div class="unit"><span class="num" id="m">00</span><span class="label">分</span></div>
+    <span class="sep">:</span>
+    <div class="unit"><span class="num" id="s">00</span><span class="label">秒</span></div>
+  </div>
+
+  <div id="celebrate" class="celebrate" style="display:none;">🎉 春节快乐 🎉</div>
+
+  <div class="tip" id="tip">🧧 红包准备好了吗？</div>
+
+  <div class="target-date">目标：<strong>2027 年 2 月 6 日（正月初一）</strong></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================
+     1. 倒计时逻辑
+     ========================================================= */
+  // 2027 年春节：正月初一（2 月 6 日 00:00:00）
+  // 想倒计时到除夕，把下面的 6 改成 5 即可
+  var TARGET = new Date(2027, 1, 6, 0, 0, 0).getTime();
+
+  var els = {
+    d: document.getElementById('d'),
+    h: document.getElementById('h'),
+    m: document.getElementById('m'),
+    s: document.getElementById('s')
+  };
+  var countdownEl = document.getElementById('countdown');
+  var celebrateEl = document.getElementById('celebrate');
+  var tipEl       = document.getElementById('tip');
+
+  function pad(n) {
+    return n < 10 ? '0' + n : '' + n;
+  }
+
+  // 只有数值真的变化时才更新 + 触发弹跳动画
+  function setNum(el, val) {
+    var str = pad(val);
+    if (el.textContent !== str) {
+      el.textContent = str;
+      el.classList.remove('bump');
+      void el.offsetWidth; // 强制重排，让动画可以重新播放
+      el.classList.add('bump');
+    }
+  }
+
+  function tick() {
+    var diff = TARGET - Date.now();
+
+    if (diff <= 0) {
+      countdownEl.style.display = 'none';
+      celebrateEl.style.display = 'block';
+      return;
+    }
+
+    var total = Math.floor(diff / 1000);
+    setNum(els.d, Math.floor(total / 86400));
+    setNum(els.h, Math.floor((total % 86400) / 3600));
+    setNum(els.m, Math.floor((total % 3600) / 60));
+    setNum(els.s, total % 60);
+  }
+
+  tick();
+  setInterval(tick, 250); // 250ms 检查一次，避免定时器漂移导致跳秒延迟
+
+  /* =========================================================
+     2. 俏皮小贴士轮播
+     ========================================================= */
+  var TIPS = [
+    '🧧 红包准备好了吗？',
+    '🥟 年夜饭想好吃什么了吗？',
+    '🎫 回家的车票抢到了吗？',
+    '🏮 春联和福字写好了吗？',
+    '🍊 年货该囤起来啦！',
+    '🐑 2027 丁未羊年 · 祝你“羊”眉吐气',
+    '🎆 记得给自己许个新年愿望',
+    '🧨 鞭炮声声辞旧岁，岁岁平安',
+    '🍬 糖果瓜子备齐了没？',
+    '👨‍👩‍👧 今年回家陪爸妈吃顿饭吧'
+  ];
+  var tipIdx = 0;
+
+  setInterval(function () {
+    tipIdx = (tipIdx + 1) % TIPS.length;
+    tipEl.classList.add('fade');
+    setTimeout(function () {
+      tipEl.textContent = TIPS[tipIdx];
+      tipEl.classList.remove('fade');
+    }, 350);
+  }, 4200);
+
+  /* =========================================================
+     3. Canvas 特效：飘落花瓣 + 点击烟花 + 浮字祝福
+     ========================================================= */
+  var canvas = document.getElementById('fx');
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, DPR = 1;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width  = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  /* ---------- 飘落花瓣 ---------- */
+  var petals = [];
+
+  function makePetal(initial) {
+    return {
+      x: Math.random() * W,
+      y: initial ? Math.random() * H : -30,
+      size: 3 + Math.random() * 5,
+      vy: 0.35 + Math.random() * 0.75,
+      vx: -0.35 + Math.random() * 0.7,
+      rot: Math.random() * Math.PI * 2,
+      vr: (Math.random() - 0.5) * 0.04,
+      alpha: 0.22 + Math.random() * 0.42,
+      gold: Math.random() < 0.55
+    };
+  }
+
+  for (var i = 0; i < 34; i++) petals.push(makePetal(true));
+
+  /* ---------- 烟花粒子 ---------- */
+  var sparks = [];
+
+  function boom(x, y) {
+    if (sparks.length > 700) return; // 性能保护
+    var count = 46 + Math.floor(Math.random() * 24);
+    var hue = Math.random() * 360;
+
+    for (var i = 0; i < count; i++) {
+      var angle = Math.random() * Math.PI * 2;
+      var speed = 1.2 + Math.random() * 5.5;
+      sparks.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.012 + Math.random() * 0.022,
+        size: 1 + Math.random() * 2.2,
+        color: 'hsl(' + Math.floor(hue + Math.random() * 70) + ',100%,' +
+               Math.floor(58 + Math.random() * 22) + '%)'
+      });
+    }
+  }
+
+  /* ---------- 浮起的祝福文字 ---------- */
+  var words = [];
+  var WORD_POOL = ['福', '🧧', '🎉', '🐑', '🧨', '🥟', '🏮', '💰', '🍊', '✨', '喜', '春'];
+
+  function floatWord(x, y) {
+    words.push({
+      x: x + (Math.random() - 0.5) * 40,
+      y: y,
+      text: WORD_POOL[Math.floor(Math.random() * WORD_POOL.length)],
+      vy: -(0.9 + Math.random() * 0.8),
+      life: 1,
+      size: 18 + Math.random() * 18
+    });
+  }
+
+  /* ---------- 点击即放烟花 ---------- */
+  window.addEventListener('pointerdown', function (e) {
+    boom(e.clientX, e.clientY);
+    floatWord(e.clientX, e.clientY);
+  });
+
+  /* ---------- 主渲染循环 ---------- */
+  function loop() {
+    ctx.clearRect(0, 0, W, H);
+
+    // 花瓣
+    for (var i = 0; i < petals.length; i++) {
+      var p = petals[i];
+      p.y += p.vy;
+      p.x += p.vx + Math.sin((p.y + p.rot * 40) * 0.01) * 0.35; // 左右摇曳
+      p.rot += p.vr;
+
+      if (p.y > H + 40 || p.x < -50 || p.x > W + 50) {
+        petals[i] = makePetal(false);
+        continue;
+      }
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.gold ? '#f5c542' : '#e8563f';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, p.size, p.size * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 烟花火花：用 lighter 叠加，更亮更通透
+    ctx.globalCompositeOperation = 'lighter';
+    for (var j = sparks.length - 1; j >= 0; j--) {
+      var s = sparks[j];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.vx *= 0.982;
+      s.vy = s.vy * 0.982 + 0.055; // 轻微重力
+      s.life -= s.decay;
+
+      if (s.life <= 0) {
+        sparks.splice(j, 1);
+        continue;
+      }
+
+      ctx.globalAlpha = Math.max(s.life, 0);
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size * (0.4 + s.life * 0.6), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    // 浮字
+    for (var k = words.length - 1; k >= 0; k--) {
+      var w = words[k];
+      w.y += w.vy;
+      w.life -= 0.011;
+
+      if (w.life <= 0) {
+        words.splice(k, 1);
+        continue;
+      }
+
+      ctx.globalAlpha = Math.min(w.life, 1);
+      ctx.font = '700 ' + w.size + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffd75e';
+      ctx.shadowColor = 'rgba(255, 180, 40, 0.9)';
+      ctx.shadowBlur = 16;
+      ctx.fillText(w.text, w.x, w.y);
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  /* ---------- 开场自动放两朵烟花 ---------- */
+  setTimeout(function () {
+    boom(W * 0.28, H * 0.3);
+    boom(W * 0.72, H * 0.24);
+  }, 500);
+
+})();
+</script>
+
+</body>
+</html>
