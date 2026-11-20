@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>春节倒计时 · 2027</title>
 <style>
   * {
@@ -11,8 +11,15 @@
     box-sizing: border-box;
   }
 
+  html {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -21,6 +28,8 @@
     font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
     overflow-x: hidden;
     position: relative;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   /* ===== 特效画布：铺在最上层，不拦截点击 ===== */
@@ -222,6 +231,7 @@
     padding: 40px 0;
   }
 
+  /* ===== 平板 / 小屏通用调整 ===== */
   @media (max-width: 640px) {
     .card { padding: 36px 16px 32px; }
     h1 { letter-spacing: 6px; }
@@ -230,6 +240,51 @@
     .lantern { width: 42px; height: 34px; }
     .lantern.l1 { left: 4%; }
     .lantern.l2 { right: 4%; }
+  }
+
+  /* ===== 窄屏手机：强制单行，按比例缩放 ===== */
+  @media (max-width: 420px) {
+    .countdown {
+      flex-wrap: nowrap;
+      gap: 2px;
+    }
+    .unit {
+      min-width: 0;
+      flex: 1 1 0;
+    }
+    .num {
+      font-size: clamp(30px, 12vw, 48px);
+      letter-spacing: 0;
+    }
+    .sep {
+      font-size: clamp(24px, 8vw, 40px);
+      margin-top: 0.08em;
+    }
+    .label {
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-top: 6px;
+    }
+    .card {
+      padding: 28px 10px 24px;
+      border-radius: 24px;
+    }
+    .subtitle {
+      font-size: 12px;
+      letter-spacing: 3px;
+    }
+    .year-tag {
+      margin-bottom: 24px;
+    }
+    .tip {
+      font-size: 13px;
+      letter-spacing: 1px;
+      margin-top: 24px;
+    }
+    .target-date {
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
   }
 </style>
 </head>
@@ -422,10 +477,23 @@
     });
   }
 
-  /* ---------- 点击即放烟花 ---------- */
+  /* ---------- 点击判定：位移小 + 时长短才算点击（滑动不误触） ---------- */
+  var downX = 0, downY = 0, downT = 0;
+
   window.addEventListener('pointerdown', function (e) {
-    boom(e.clientX, e.clientY);
-    floatWord(e.clientX, e.clientY);
+    downX = e.clientX;
+    downY = e.clientY;
+    downT = Date.now();
+  });
+
+  window.addEventListener('pointerup', function (e) {
+    var dx = Math.abs(e.clientX - downX);
+    var dy = Math.abs(e.clientY - downY);
+    // 位移 < 10px 且按下时长 < 350ms，才算一次点击
+    if (dx < 10 && dy < 10 && Date.now() - downT < 350) {
+      boom(e.clientX, e.clientY);
+      floatWord(e.clientX, e.clientY);
+    }
   });
 
   /* ---------- 主渲染循环 ---------- */
