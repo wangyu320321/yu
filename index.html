@@ -40,7 +40,6 @@
     pointer-events: none;
   }
 
-  /* ===== 弹幕层 ===== */
   #danmaku {
     position: fixed;
     inset: 0;
@@ -74,7 +73,6 @@
     to   { transform: translateX(calc(-100vw - 100%)); }
   }
 
-  /* ===== 摇摆灯笼 ===== */
   .lantern {
     position: absolute;
     top: -10px;
@@ -117,7 +115,6 @@
     to   { transform: rotate(7deg); }
   }
 
-  /* ===== 主卡片 ===== */
   .card {
     position: relative;
     z-index: 3;
@@ -159,7 +156,6 @@
     to { background-position: 220% center; }
   }
 
-  /* ===== 倒计时 ===== */
   .countdown {
     display: flex;
     align-items: flex-start;
@@ -229,9 +225,6 @@
     font-weight: 600;
   }
 
-  /* =========================================================
-     盲盒抽签模块
-     ========================================================= */
   .fortune {
     margin-top: 30px;
     padding-top: 24px;
@@ -486,7 +479,6 @@
     padding: 40px 0;
   }
 
-  /* ===== 平板 / 小屏 ===== */
   @media (max-width: 640px) {
     .card { padding: 34px 16px 28px; }
     h1 { letter-spacing: 6px; margin-bottom: 24px; }
@@ -500,7 +492,6 @@
     .box { min-height: 176px; }
   }
 
-  /* ===== 窄屏手机 ===== */
   @media (max-width: 420px) {
     .countdown {
       flex-wrap: nowrap;
@@ -666,7 +657,7 @@
   setInterval(tick, 250);
 
   /* =========================================================
-     2. 弹幕：三行，随机间隔，修复同轨重叠
+     2. 弹幕：高密度、不重叠
      ========================================================= */
   var TIPS = [
     '🧧 红包准备好了吗？',
@@ -690,27 +681,44 @@
   var layer = document.getElementById('danmaku');
   var tipIdx = 0;
 
-  var ROW_COUNT  = 3;
-  var ROW_HEIGHT = 40;
-  var BASE_SPEED = 120;      // px/s
-  var LANE_BUFFER = 150;     // 轨道额外缓冲，毫秒
+  // 增加轨道数：5 行，行高 36px，覆盖更多屏幕
+  var ROW_COUNT   = 5;
+  var ROW_HEIGHT  = 36;
+  var BASE_SPEED  = 120;
+  var LANE_GAP    = 16;    // 同轨两条弹幕之间的最小像素间距
+  var MIN_RETRY   = 120;   // 全忙时的重试间隔（毫秒）
 
-  var laneFreeAt = new Array(ROW_COUNT).fill(0);
+  // 每条轨道记录：上一次发射时间 + 上一次弹幕宽度
+  var lastLaunchAt = new Array(ROW_COUNT).fill(0);
+  var lastWidth    = new Array(ROW_COUNT).fill(0);
 
-  // 修复点 1：全忙时返回 -1，不再强行选最早释放的轨道
-  function pickLane() {
-    var now = Date.now();
-    for (var i = 0; i < ROW_COUNT; i++) {
-      if (laneFreeAt[i] <= now) return i;
-    }
-    return -1;
+  // 计算某条轨道距离“可以再发一条”还有多少毫秒
+  // 条件：新弹幕的头部（从右侧出发）不能碰到上一条的尾部
+  // 上一条尾部进入屏幕需要 (视口宽 - 上一条宽?) 不对——重新推导：
+  // 上一条从 left:100% 出发，尾部到达视口右边缘耗时 = 上一条宽度 / 速度
+  // 新弹幕从 left:100% 出发，头部到达视口右边缘需要 0
+  // 所以上一条尾部进屏后，新弹幕就可以出发，两者之间天然有 LANE_GAP 的间隔
+  function laneReadyIn(lane) {
+    var last = lastLaunchAt[lane];
+    if (!last) return 0;
+    var enterTime = (lastWidth[lane] + LANE_GAP) / BASE_SPEED * 1000;
+    return Math.max(0, last + enterTime - Date.now());
   }
 
-  // 修复点 2：用“完全离屏时间 + 缓冲”占用轨道，并返回是否发射成功
-  function fireDanmaku() {
-    var lane = pickLane();
-    if (lane === -1) return false;   // 没空位，本次跳过
+  function pickLane() {
+    var bestLane = -1;
+    var bestWait = Infinity;
 
+    for (var i = 0; i < ROW_COUNT; i++) {
+      var wait = laneReadyIn(i);
+      if (wait <= 0) return i;          // 立即有空位
+      if (wait < bestWait) { bestWait = wait; bestLane = i; }
+    }
+    // 全忙时返回等待最短的轨道和剩余时间
+    return { lane: bestLane, wait: bestWait };
+  }
+
+  function spawn(lane) {
     var text = TIPS[tipIdx];
     tipIdx = (tipIdx + 1) % TIPS.length;
 
@@ -719,33 +727,38 @@
     item.textContent = text;
 
     var h = window.innerHeight;
-    var startY = Math.max(80, h * 0.16);
+    var startY = Math.max(72, h * 0.14);
     item.style.top = (startY + lane * ROW_HEIGHT) + 'px';
 
     layer.appendChild(item);
     var width = item.offsetWidth;
 
-    // 动画时长：从左侧 100% 移到完全离屏，总路程 = 视口宽 + 自身宽
     var distance = window.innerWidth + width;
     var duration = distance / BASE_SPEED;
     item.style.animationDuration = duration.toFixed(2) + 's';
 
-    // 轨道占用 = 这条弹幕完全离开屏幕所需时间 + 缓冲
-    var leaveTime = distance / BASE_SPEED * 500;
-    laneFreeAt[lane] = Date.now() + leaveTime + LANE_BUFFER;
+    lastLaunchAt[lane] = Date.now();
+    lastWidth[lane] = width;
 
     item.addEventListener('animationend', function () { item.remove(); });
-    return true;
   }
 
-  // 修复点 3：成功时随机间隔 700~1500ms，失败时 200ms 后快速重试
   function scheduleNext() {
-    var ok = fireDanmaku();
-    var delay = ok ? (400 + Math.random() * 400) : 200;
-    setTimeout(scheduleNext, delay);
+    var pick = pickLane();
+
+    if (typeof pick === 'number') {
+      // 有空位，立即发
+      spawn(pick);
+      // 成功发射后 250~600ms 再尝试下一条，整体密度显著提高
+      setTimeout(scheduleNext, 350 + Math.random() * 350);
+    } else {
+      // 全忙，等最短剩余时间后重试（至少 MIN_RETRY）
+      var wait = Math.max(MIN_RETRY, pick.wait);
+      setTimeout(scheduleNext, wait);
+    }
   }
 
-  setTimeout(scheduleNext, 500);
+  setTimeout(scheduleNext, 400);
 
   /* =========================================================
      3. 春节盲盒抽签
@@ -780,7 +793,6 @@
   var lastIndex = -1;
   var flipping  = false;
 
-  // 盒子高度随内容自适应，保证按钮不溢出
   function syncBoxHeight() {
     var front = boxEl.querySelector('.face-front');
     var back  = boxEl.querySelector('.face-back');
