@@ -750,7 +750,7 @@
       // 有空位，立即发
       spawn(pick);
       // 成功发射后 250~600ms 再尝试下一条，整体密度显著提高
-      setTimeout(scheduleNext, 350 + Math.random() * 350);
+      setTimeout(scheduleNext, 250 + Math.random() * 350);
     } else {
       // 全忙，等最短剩余时间后重试（至少 MIN_RETRY）
       var wait = Math.max(MIN_RETRY, pick.wait);
