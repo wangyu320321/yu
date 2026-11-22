@@ -731,7 +731,7 @@
     item.style.animationDuration = duration.toFixed(2) + 's';
 
     // 轨道占用 = 这条弹幕完全离开屏幕所需时间 + 缓冲
-    var leaveTime = distance / BASE_SPEED * 1000;
+    var leaveTime = distance / BASE_SPEED * 500;
     laneFreeAt[lane] = Date.now() + leaveTime + LANE_BUFFER;
 
     item.addEventListener('animationend', function () { item.remove(); });
@@ -741,7 +741,7 @@
   // 修复点 3：成功时随机间隔 700~1500ms，失败时 200ms 后快速重试
   function scheduleNext() {
     var ok = fireDanmaku();
-    var delay = ok ? (700 + Math.random() * 800) : 200;
+    var delay = ok ? (400 + Math.random() * 400) : 200;
     setTimeout(scheduleNext, delay);
   }
 
